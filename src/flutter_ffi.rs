@@ -1140,12 +1140,13 @@ pub fn main_get_socks() -> Vec<String> {
     get_socks()
 }
 
+// Window titles use the display name; the internal APP_NAME stays space-free for paths.
 pub fn main_get_app_name() -> String {
-    get_app_name()
+    crate::hope_desk::display_name()
 }
 
 pub fn main_get_app_name_sync() -> SyncReturn<String> {
-    SyncReturn(get_app_name())
+    SyncReturn(crate::hope_desk::display_name())
 }
 
 pub fn main_uri_prefix_sync() -> SyncReturn<String> {

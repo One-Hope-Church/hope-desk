@@ -237,6 +237,10 @@ pub fn is_installed_daemon(prompt: bool) -> bool {
         }
         return true;
     }
+    if crate::hope_desk::is_staff() {
+        log::warn!("Hope Desk staff build does not install launchd jobs");
+        return false;
+    }
 
     let Some(install_script) = PRIVILEGES_SCRIPTS_DIR.get_file("install.scpt") else {
         return false;
@@ -395,6 +399,9 @@ fn write_plist_atomically(path: &str, body: &str) -> ResultType<()> {
 }
 
 pub fn write_plists() -> ResultType<()> {
+    if crate::hope_desk::is_staff() {
+        bail!("Hope Desk staff build does not install launchd jobs");
+    }
     let daemon_plist_path = format!(
         "/Library/LaunchDaemons/com.carriez.{}_service.plist",
         crate::get_app_name()
@@ -965,6 +972,9 @@ fn update_me_from_app_dir(app_dir: String) -> ResultType<()> {
 }
 
 fn update_me_from_source(update_source: UpdateSource) -> ResultType<()> {
+    if crate::hope_desk::is_staff() {
+        bail!("Hope Desk staff build does not update from source");
+    }
     let app_name = crate::get_app_name();
     validate_install_app_name(&app_name)?;
     let is_installed_daemon = is_installed_daemon(false);

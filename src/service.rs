@@ -7,6 +7,10 @@ fn main() {}
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     crate::common::load_custom_client();
+    if librustdesk::hope_desk::is_staff() {
+        eprintln!("The service is not available in Hope Desk");
+        std::process::exit(1);
+    }
     if args.len() > 1 && args[1] == "--write-plists" {
         if let Err(e) = librustdesk::platform::write_plists() {
             eprintln!("Failed to write plists: {}", e);

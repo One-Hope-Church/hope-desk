@@ -376,6 +376,8 @@ pub struct Connection {
     unauthorized_id: Option<UnauthorizedID>,
     require_2fa: Option<totp_rs::TOTP>,
     awaiting_2fa: bool,
+    // Hope Desk staff build: the peer presented a valid one-time password and is waiting for Accept.
+    hope_desk_password_ok: bool,
     trusted_device: Option<crate::trusted_devices::host::Attempt>,
     keyboard: bool,
     clipboard: bool,
@@ -572,6 +574,7 @@ impl Connection {
             },
             require_2fa: crate::auth_2fa::get_2fa(None),
             awaiting_2fa: false,
+            hope_desk_password_ok: false,
             trusted_device: None,
             // Defer display enumeration until login succeeds. Monitor login replaces this
             // with the primary index returned with the refreshed display snapshot.
@@ -753,6 +756,9 @@ impl Connection {
                 Some(data) = rx_from_cm.recv() => {
                     match data {
                         ipc::Data::Authorize => {
+                            if crate::hope_desk::is_staff() && !conn.hope_desk_password_ok {
+                                log::warn!("Ignoring Authorize: no valid one-time password was presented");
+                            } else {
                             conn.set_conn_audit_primary_auth(ConnAuditPrimaryAuth::Click);
                             conn.trusted_device = None;
                             conn.require_2fa.take();
@@ -761,6 +767,7 @@ impl Connection {
                             }
                             if conn.port_forward_socket.is_some() {
                                 break;
+                            }
                             }
                         }
                         ipc::Data::Close => {
@@ -2622,6 +2629,43 @@ impl Connection {
         state.failures = 0;
     }
 
+    /// Hope Desk staff build: a login needs the one-time password AND an Accept click.
+    /// A correct password only shows the Accept prompt; it never authorizes the connection here.
+    /// Returns what `on_message` returns (true = keep the connection).
+    async fn hope_desk_staff_login(&mut self, my_id: String, my_name: String) -> bool {
+        self.hope_desk_password_ok = false;
+        // `self.lr` holds this login request (set by handle_login_request_without_validation).
+        if self.lr.password.is_empty() {
+            self.send_login_error(crate::client::LOGIN_MSG_PASSWORD_EMPTY)
+                .await;
+            return true;
+        }
+        let ok = if self.is_recent_session(false) {
+            true
+        } else {
+            let (failure, res) = self.check_failure(0).await;
+            if !res {
+                return true;
+            }
+            let ok = self.validate_password(false);
+            self.update_failure_with_scope(failure, ok, 0, FailureScope::Default);
+            if !ok {
+                self.check_update_temporary_password(false);
+            }
+            ok
+        };
+        if !ok {
+            self.send_login_error(crate::client::LOGIN_MSG_PASSWORD_WRONG)
+                .await;
+            return true;
+        }
+        self.hope_desk_password_ok = true;
+        self.try_start_cm(my_id, my_name, false);
+        self.send_login_error(crate::client::LOGIN_MSG_NO_PASSWORD_ACCESS)
+            .await;
+        true
+    }
+
     fn validate_password(&mut self, allow_permanent_password: bool) -> bool {
         if password::temporary_enabled() {
             let password = password::temporary_password();
@@ -2636,7 +2680,10 @@ impl Connection {
                 return true;
             }
         }
-        if password::permanent_enabled() || allow_permanent_password {
+        // Hope Desk staff build never accepts a permanent password.
+        if !crate::hope_desk::is_staff()
+            && (password::permanent_enabled() || allow_permanent_password)
+        {
             let print_fallback = || {
                 if allow_permanent_password && !password::permanent_enabled() {
                     log::info!("Permanent password accepted via logon-screen fallback");
@@ -3043,6 +3090,10 @@ impl Connection {
             let allow_logon_screen_password =
                 crate::get_builtin_option(keys::OPTION_ALLOW_LOGON_SCREEN_PASSWORD) == "Y"
                     && is_logon();
+
+            if crate::hope_desk::is_staff() {
+                return self.hope_desk_staff_login(lr.my_id, lr.my_name).await;
+            }
 
             if (password::approve_mode() == ApproveMode::Click && !allow_logon_screen_password)
                 || password::approve_mode() == ApproveMode::Both && !password::has_valid_password()

@@ -78,9 +78,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget buildLeftPane(BuildContext context) {
     final isIncomingOnly = bind.isIncomingOnly();
     final isOutgoingOnly = bind.isOutgoingOnly();
+    final isStaff = isHopeDeskStaff();
     final children = <Widget>[
-      if (!isOutgoingOnly) buildPresetPasswordWarning(),
-      if (bind.isCustomClient())
+      if (!isOutgoingOnly && !isStaff) buildPresetPasswordWarning(),
+      if (bind.isCustomClient() && !isStaff)
         Align(
           alignment: Alignment.center,
           child: loadPowered(context),
@@ -89,9 +90,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         alignment: Alignment.center,
         child: loadLogo(),
       ),
-      buildTip(context),
-      if (!isOutgoingOnly) buildIDBoard(context),
-      if (!isOutgoingOnly) buildPasswordBoard(context),
+      if (!isStaff) buildTip(context),
+      if (!isOutgoingOnly && !isStaff) buildIDBoard(context),
+      if (!isOutgoingOnly && !isStaff) buildPasswordBoard(context),
+      if (isStaff) buildHopeDeskStaffPanel(context),
       FutureBuilder<Widget>(
         future: Future.value(
             Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
@@ -129,7 +131,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return ChangeNotifierProvider.value(
       value: gFFI.serverModel,
       child: Container(
-        width: isIncomingOnly ? 280.0 : 200.0,
+        width: isStaff ? 320.0 : (isIncomingOnly ? 280.0 : 200.0),
         color: Theme.of(context).colorScheme.background,
         child: Stack(
           children: [
@@ -386,6 +388,117 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
+  Widget buildHopeDeskStaffPanel(BuildContext context) {
+    return ChangeNotifierProvider.value(
+        value: gFFI.serverModel,
+        child: Consumer<ServerModel>(
+          builder: (context, model, child) {
+            return buildHopeDeskStaffPanel2(context, model);
+          },
+        ));
+  }
+
+  Widget buildHopeDeskStaffPanel2(BuildContext context, ServerModel model) {
+    RxBool refreshHover = false.obs;
+    final textColor = Theme.of(context).textTheme.titleLarge?.color;
+    final labelStyle =
+        TextStyle(fontSize: 14, color: textColor?.withOpacity(0.5));
+    Widget block(String label, TextEditingController controller,
+        {double letterSpacing = 0, Widget? trailing}) {
+      return Container(
+        margin: const EdgeInsets.only(top: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 2,
+              height: 72,
+              decoration: const BoxDecoration(color: MyTheme.accent),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 7),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: labelStyle),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onDoubleTap: () {
+                              Clipboard.setData(
+                                  ClipboardData(text: controller.text));
+                              showToast(translate("Copied"));
+                            },
+                            child: TextFormField(
+                              controller: controller,
+                              readOnly: true,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding:
+                                    EdgeInsets.only(top: 8, bottom: 8),
+                              ),
+                              style: TextStyle(
+                                  fontSize: 30, letterSpacing: letterSpacing),
+                            ).workaroundFreezeLinuxMint(),
+                          ),
+                        ),
+                        if (trailing != null) trailing,
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(left: 20.0, right: 16, top: 16, bottom: 13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Read Corey this ID and code',
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Corey can only see this computer while Hope Desk is open and you click Accept.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          block('ID', model.serverId),
+          block(
+            'One-time code',
+            model.serverPasswd,
+            letterSpacing: 2,
+            trailing: AnimatedRotationWidget(
+              onPressed: () => bind.mainUpdateTemporaryPassword(),
+              child: Tooltip(
+                message: translate('Refresh Password'),
+                child: Obx(() => RotatedBox(
+                    quarterTurns: 2,
+                    child: Icon(
+                      Icons.refresh,
+                      color:
+                          refreshHover.value ? textColor : Color(0xFFDDDDDD),
+                      size: 22,
+                    ))),
+              ),
+              onHover: (value) => refreshHover.value = value,
+            ).marginOnly(right: 4),
+          ),
+        ],
+      ),
+    );
+  }
+
   buildTip(BuildContext context) {
     final isOutgoingOnly = bind.isOutgoingOnly();
     return Padding(
@@ -499,6 +612,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           watchIsInputMonitoring = true;
         }, help: 'Help', link: translate("doc_mac_permission"));
       } else if (!isOutgoingOnly &&
+          !isHopeDeskStaff() &&
           !svcStopped.value &&
           bind.mainIsInstalled() &&
           !bind.mainIsInstalledDaemon(prompt: false)) {

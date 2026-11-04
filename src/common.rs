@@ -2492,7 +2492,11 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
     ThrottledInterval::new(i)
 }
 
+// Hope Desk: compiled-in config replaces the signed custom.txt.
+#[allow(unreachable_code)]
 pub fn load_custom_client() {
+    crate::hope_desk::init();
+    return;
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());
@@ -2590,7 +2594,11 @@ pub fn get_dst_align_rgba() -> usize {
     1
 }
 
+// Hope Desk: compiled-in config replaces the signed custom.txt.
+#[allow(unreachable_code)]
 pub fn read_custom_client(config: &str) {
+    crate::hope_desk::init();
+    return;
     let Ok(data) = decode64(config) else {
         log::error!("Failed to decode custom client config");
         return;

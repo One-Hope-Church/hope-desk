@@ -93,6 +93,9 @@ pub fn core_main() -> Option<CoreMainAction> {
         }
         i += 1;
     }
+    if !crate::hope_desk::check_cli_args(&args) {
+        return None;
+    }
     #[cfg(any(target_os = "linux", target_os = "windows"))]
     if args.is_empty() {
         #[cfg(target_os = "linux")]

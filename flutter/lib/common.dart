@@ -3978,6 +3978,11 @@ bool isChangeIdDisabled() =>
 bool isUnlockPinDisabled() =>
     bind.mainGetBuildinOption(key: kOptionDisableUnlockPin) == 'Y';
 
+/// Hope Desk staff build (Rust feature `hope-desk-staff`): help-only, one-time code + Accept click.
+bool? _isHopeDeskStaff;
+bool isHopeDeskStaff() =>
+    _isHopeDeskStaff ??= bind.mainGetHardOption(key: 'hope-desk-staff') == 'Y';
+
 bool? _isCustomClient;
 bool get isCustomClient {
   _isCustomClient ??= bind.isCustomClient();
