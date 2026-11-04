@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
+import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
@@ -52,6 +53,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   final RxBool _editHover = false.obs;
   final RxBool _block = false.obs;
+  // Hope Desk Production: whether a permanent password is set (drives the banner).
+  final RxBool _permanentPasswordSet = false.obs;
 
   final GlobalKey _childKey = GlobalKey();
 
@@ -79,9 +82,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final isIncomingOnly = bind.isIncomingOnly();
     final isOutgoingOnly = bind.isOutgoingOnly();
     final isStaff = isHopeDeskStaff();
+    final isProd = isHopeDeskProduction();
+    // Hope Desk: staff and production share the receive-only left pane.
+    final isHopeReceive = isStaff || isProd;
     final children = <Widget>[
-      if (!isOutgoingOnly && !isStaff) buildPresetPasswordWarning(),
-      if (bind.isCustomClient() && !isStaff)
+      if (!isOutgoingOnly && !isHopeReceive) buildPresetPasswordWarning(),
+      if (bind.isCustomClient() && !isHopeReceive)
         Align(
           alignment: Alignment.center,
           child: loadPowered(context),
@@ -90,10 +96,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         alignment: Alignment.center,
         child: loadLogo(),
       ),
-      if (!isStaff) buildTip(context),
-      if (!isOutgoingOnly && !isStaff) buildIDBoard(context),
-      if (!isOutgoingOnly && !isStaff) buildPasswordBoard(context),
+      if (!isHopeReceive) buildTip(context),
+      if (!isOutgoingOnly && !isHopeReceive) buildIDBoard(context),
+      if (!isOutgoingOnly && !isHopeReceive) buildPasswordBoard(context),
       if (isStaff) buildHopeDeskStaffPanel(context),
+      if (isProd) buildHopeDeskProductionPanel(context),
       FutureBuilder<Widget>(
         future: Future.value(
             Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
@@ -131,7 +138,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return ChangeNotifierProvider.value(
       value: gFFI.serverModel,
       child: Container(
-        width: isStaff ? 320.0 : (isIncomingOnly ? 280.0 : 200.0),
+        width: isHopeReceive ? 340.0 : (isIncomingOnly ? 280.0 : 200.0),
         color: Theme.of(context).colorScheme.background,
         child: Stack(
           children: [
@@ -398,71 +405,76 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         ));
   }
 
-  Widget buildHopeDeskStaffPanel2(BuildContext context, ServerModel model) {
-    RxBool refreshHover = false.obs;
+  /// Labeled, accent-barred read-only value (ID / one-time code), shared by the
+  /// staff and production panels.
+  Widget _hopeDeskBlock(
+      BuildContext context, String label, TextEditingController controller,
+      {double letterSpacing = 0, Widget? trailing, Widget? below}) {
     final textColor = Theme.of(context).textTheme.titleLarge?.color;
     final labelStyle =
         TextStyle(fontSize: 14, color: textColor?.withOpacity(0.5));
-    Widget block(String label, TextEditingController controller,
-        {double letterSpacing = 0, Widget? trailing}) {
-      return Container(
-        margin: const EdgeInsets.only(top: 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 2,
-              height: 72,
-              decoration: const BoxDecoration(color: MyTheme.accent),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 7),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: labelStyle),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onDoubleTap: () {
-                              Clipboard.setData(
-                                  ClipboardData(text: controller.text));
-                              showToast(translate("Copied"));
-                            },
-                            child: TextFormField(
-                              controller: controller,
-                              readOnly: true,
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding:
-                                    EdgeInsets.only(top: 8, bottom: 8),
-                              ),
-                              style: TextStyle(
-                                  fontSize: 30, letterSpacing: letterSpacing),
-                            ).workaroundFreezeLinuxMint(),
-                          ),
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 2,
+            height: below == null ? 72 : 108,
+            decoration: const BoxDecoration(color: MyTheme.accent),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 7),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: labelStyle),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onDoubleTap: () {
+                            Clipboard.setData(
+                                ClipboardData(text: controller.text));
+                            showToast(translate("Copied"));
+                          },
+                          child: TextFormField(
+                            controller: controller,
+                            readOnly: true,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding:
+                                  EdgeInsets.only(top: 8, bottom: 8),
+                            ),
+                            style: TextStyle(
+                                fontSize: 30, letterSpacing: letterSpacing),
+                          ).workaroundFreezeLinuxMint(),
                         ),
-                        if (trailing != null) trailing,
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      if (trailing != null) trailing,
+                    ],
+                  ),
+                  if (below != null) below,
+                ],
               ),
             ),
-          ],
-        ),
-      );
-    }
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget buildHopeDeskStaffPanel2(BuildContext context, ServerModel model) {
+    RxBool refreshHover = false.obs;
+    final textColor = Theme.of(context).textTheme.titleLarge?.color;
     return Container(
       margin: const EdgeInsets.only(left: 20.0, right: 16, top: 16, bottom: 13),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Read Corey this ID and code',
+            'Remote support',
             style: Theme.of(context)
                 .textTheme
                 .titleLarge
@@ -470,11 +482,24 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           ),
           const SizedBox(height: 10),
           Text(
-            'Corey can only see this computer while Hope Desk is open and you click Accept.',
+            'Share this ID and one-time code with One Hope IT. They can connect only while Hope Desk is open, and only after you click Accept.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          block('ID', model.serverId),
-          block(
+          _hopeDeskBlock(
+            context,
+            'ID',
+            model.serverId,
+            below: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                // Staff's own Mac: no admin unlock needed.
+                onPressed: () => changeIdDialog(),
+                child: const Text('Change ID'),
+              ),
+            ),
+          ),
+          _hopeDeskBlock(
+            context,
             'One-time code',
             model.serverPasswd,
             letterSpacing: 2,
@@ -494,6 +519,173 @@ class _DesktopHomePageState extends State<DesktopHomePage>
               onHover: (value) => refreshHover.value = value,
             ).marginOnly(right: 4),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildHopeDeskProductionPanel(BuildContext context) {
+    return ChangeNotifierProvider.value(
+        value: gFFI.serverModel,
+        child: Consumer<ServerModel>(
+          builder: (context, model, child) {
+            return buildHopeDeskProductionPanel2(context, model);
+          },
+        ));
+  }
+
+  Future<void> _refreshPermanentPasswordSet() async {
+    final set = (await bind.mainGetCommon(key: "permanent-password-set")) ==
+        "true";
+    if (_permanentPasswordSet.value != set) {
+      _permanentPasswordSet.value = set;
+      // The banner and the "Password set" row differ in height; refit the window.
+      if (isInHomePage()) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _updateWindowSize();
+        });
+      }
+    }
+  }
+
+  /// Production: Set/Change password and Change ID need the Mac's admin unlock
+  /// once the app is installed (same gate the Security tab uses).
+  Future<bool> _hopeDeskAdminUnlock() async {
+    if (bind.mainIsInstalled()) {
+      return await callMainCheckSuperUserPermission();
+    }
+    return true;
+  }
+
+  Widget buildHopeDeskProductionPanel2(
+      BuildContext context, ServerModel model) {
+    final textColor = Theme.of(context).textTheme.titleLarge?.color;
+
+    Future<void> onSetPassword() async {
+      if (!await _hopeDeskAdminUnlock()) return;
+      setPasswordDialog(notEmptyCallback: () {
+        _refreshPermanentPasswordSet();
+      });
+    }
+
+    Widget passwordArea() {
+      return Obx(() {
+        if (!_permanentPasswordSet.value) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.18),
+              border: Border.all(color: Colors.amber.shade700),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.amber.shade800, size: 22),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Set a password to allow remote support on this computer.',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: textColor),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: onSetPassword,
+                  child: const Text('Set password'),
+                ),
+              ],
+            ),
+          );
+        }
+        return Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Password set',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: textColor),
+              ),
+            ),
+            OutlinedButton(
+              onPressed: onSetPassword,
+              child: const Text('Change password'),
+            ),
+          ],
+        );
+      });
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(left: 20.0, right: 16, top: 16, bottom: 13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Remote support',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              // Incoming-only hides the tab-bar gear, so this is the route to Settings.
+              IconButton(
+                icon: const Icon(Icons.more_vert_outlined, size: 20),
+                tooltip: translate('Settings'),
+                onPressed: () => DesktopTabPage.onAddSetting(),
+              ),
+            ],
+          ),
+          _hopeDeskBlock(
+            context,
+            'ID',
+            model.serverId,
+            below: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () async {
+                  if (!await _hopeDeskAdminUnlock()) return;
+                  changeIdDialog();
+                },
+                child: const Text('Change ID'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          passwordArea(),
+          if (bind.mainIsInstalledDaemon(prompt: false))
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.check, color: Colors.grey, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Stays available after restart',
+                    style: TextStyle(
+                        fontSize: 12, color: textColor?.withOpacity(0.5)),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -531,7 +723,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             ),
           if (isOutgoingOnly)
             Text(
-              translate("outgoing_only_desk_tip"),
+              isHopeDeskManager()
+                  ? 'Connect to a Hope Desk or Hope Desk Production computer.'
+                  : translate("outgoing_only_desk_tip"),
               overflow: TextOverflow.clip,
               style: Theme.of(context).textTheme.bodySmall,
             ),
@@ -603,9 +797,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         return buildInstallCard("Permissions", "config_acc", "Configure",
             () async {
           bind.mainIsProcessTrusted(prompt: true);
+          // Always land on the exact pane, like the Screen Recording card.
+          launchUrl(Uri.parse(
+              'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'));
           watchIsProcessTrust = true;
         }, help: 'Help', link: translate("doc_mac_permission"));
-      } else if (!bind.mainIsCanInputMonitoring(prompt: false)) {
+      } else if (hopeDeskHardOption('hope-desk-needs-input-monitoring') ==
+              'Y' &&
+          !bind.mainIsCanInputMonitoring(prompt: false)) {
         return buildInstallCard("Permissions", "config_input", "Configure",
             () async {
           bind.mainIsCanInputMonitoring(prompt: true);
@@ -815,6 +1014,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       await gFFI.serverModel.fetchID();
+      if (isHopeDeskProduction()) {
+        await _refreshPermanentPasswordSet();
+      }
       final error = await bind.mainGetError();
       if (systemError != error) {
         systemError = error;

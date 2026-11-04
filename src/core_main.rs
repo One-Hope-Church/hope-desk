@@ -212,6 +212,7 @@ pub fn core_main() -> Option<CoreMainAction> {
         {
             crate::platform::macos::try_remove_temp_update_dir(None);
         }
+        crate::hope_desk::on_gui_start();
 
         #[cfg(windows)]
         {

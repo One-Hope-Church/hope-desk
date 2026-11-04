@@ -47,31 +47,33 @@ extern "C" bool InputMonitoringAuthStatus(bool prompt) {
     if (floor(NSAppKitVersionNumber) >= NSAppKitVersionNumber10_15) {
         IOHIDAccessType theType = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent);
         NSLog(@"IOHIDCheckAccess = %d, kIOHIDAccessTypeGranted = %d", theType, kIOHIDAccessTypeGranted);
-        switch (theType) {
-            case kIOHIDAccessTypeGranted:
-                return true;
-                break;
-            case kIOHIDAccessTypeDenied: {
-                if (prompt) {
-                    NSString *urlString = @"x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent";
-                    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:urlString]];
-                }
-                break;
-            }
-            case kIOHIDAccessTypeUnknown: {
-                if (prompt) {
-                    bool result = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent);
-                    NSLog(@"IOHIDRequestAccess result = %d", result);
-                }
-                break;
-            }
-            default:
-                break;
+        if (theType == kIOHIDAccessTypeGranted) {
+            return true;
         }
+        if (prompt) {
+            // Hope Desk: Unknown adds the app to the list; either way, land on the exact pane.
+            if (theType == kIOHIDAccessTypeUnknown) {
+                bool result = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent);
+                NSLog(@"IOHIDRequestAccess result = %d", result);
+            }
+            NSString *urlString = @"x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent";
+            [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:urlString]];
+        }
+        return false;
     } else {
         return true;
     }
-    return false;
+    #endif
+}
+
+// Hope Desk: adds the app to the Input Monitoring list (when not yet decided) without opening Settings.
+extern "C" void RequestInputMonitoringListing() {
+    #ifndef NO_InputMonitoringAuthStatus
+    if (floor(NSAppKitVersionNumber) >= NSAppKitVersionNumber10_15) {
+        if (IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeUnknown) {
+            IOHIDRequestAccess(kIOHIDRequestTypeListenEvent);
+        }
+    }
     #endif
 }
 

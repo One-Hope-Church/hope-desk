@@ -2340,6 +2340,11 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
         break;
     }
   }
+  // Hope Desk: receive-only builds (staff, production) never start sessions from links.
+  if (bind.isIncomingOnly() && type != null) {
+    showToast(translate('Failed'));
+    return false;
+  }
   if (type != null && id != null) {
     switch (type) {
       case UriLinkType.remoteDesktop:
@@ -3982,6 +3987,16 @@ bool isUnlockPinDisabled() =>
 bool? _isHopeDeskStaff;
 bool isHopeDeskStaff() =>
     _isHopeDeskStaff ??= bind.mainGetHardOption(key: 'hope-desk-staff') == 'Y';
+
+/// Hope Desk variant: 'staff' | 'production' | 'manager' (hard option set by the Rust core).
+String? _hopeDeskVariant;
+String hopeDeskVariant() =>
+    _hopeDeskVariant ??= bind.mainGetHardOption(key: 'hope-desk-variant');
+bool isHopeDeskProduction() => hopeDeskVariant() == 'production';
+bool isHopeDeskManager() => hopeDeskVariant() == 'manager';
+
+/// Reads a Hope Desk hard option (e.g. the install-link URLs) compiled into the Rust core.
+String hopeDeskHardOption(String key) => bind.mainGetHardOption(key: key);
 
 bool? _isCustomClient;
 bool get isCustomClient {

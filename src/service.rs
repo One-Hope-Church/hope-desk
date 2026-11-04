@@ -7,7 +7,7 @@ fn main() {}
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     crate::common::load_custom_client();
-    if librustdesk::hope_desk::is_staff() {
+    if !librustdesk::hope_desk::allows_service() {
         eprintln!("The service is not available in Hope Desk");
         std::process::exit(1);
     }

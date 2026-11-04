@@ -689,7 +689,9 @@ List<TTextMenu> toolbarControls(BuildContext context, String id, FFI ffi) {
         actionId: kShortcutActionToggleBlockInput));
   }
   // switchSides
-  if (isDefaultConn &&
+  // Hope Desk: Manager can't accept connections, so Switch Sides is hidden there.
+  if (!isHopeDeskManager() &&
+      isDefaultConn &&
       isDesktop &&
       ffiModel.keyboard &&
       pi.platform != kPeerPlatformAndroid &&

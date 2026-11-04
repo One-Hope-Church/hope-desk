@@ -4,9 +4,10 @@
 # THE APP ICON: replace res/hope-desk/app-icon-1024.png (1024x1024 PNG, transparent corners) --
 # that is the only file to swap; this script regenerates AppIcon.icns and flutter/assets/icon.png from it.
 #
-# Usage: res/hope-desk/apply-variant.sh staff|production
+# Usage: res/hope-desk/apply-variant.sh staff|production|manager
 #   staff      -> HopeDesk            org.onehopechurch.hopedesk             "Hope Desk"             hopedesk
 #   production -> HopeDeskProduction  org.onehopechurch.hopedesk.production  "Hope Desk Production"  hopedeskproduction
+#   manager    -> HopeDeskManager     org.onehopechurch.hopedesk.manager     "Hope Desk Manager"     hopedeskmanager
 #
 # Rewrites the four variant lines in flutter/macos/Runner/Configs/AppInfo.xcconfig.
 # Test override: HOPE_DESK_XCCONFIG=/path/to/copy.xcconfig (skips icon generation).
@@ -29,8 +30,14 @@ case "$VARIANT" in
     DISPLAY_NAME="Hope Desk Production"
     URL_SCHEME="hopedeskproduction"
     ;;
+  manager)
+    PRODUCT_NAME="HopeDeskManager"
+    BUNDLE_ID="org.onehopechurch.hopedesk.manager"
+    DISPLAY_NAME="Hope Desk Manager"
+    URL_SCHEME="hopedeskmanager"
+    ;;
   *)
-    echo "usage: $0 staff|production" >&2
+    echo "usage: $0 staff|production|manager" >&2
     exit 2
     ;;
 esac

@@ -102,6 +102,7 @@ extern "C" {
     static kAXTrustedCheckOptionPrompt: CFStringRef;
     fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> BOOL;
     fn InputMonitoringAuthStatus(_: BOOL) -> BOOL;
+    fn RequestInputMonitoringListing();
     fn IsCanScreenRecording(_: BOOL) -> BOOL;
     fn CanUseNewApiForScreenCaptureCheck() -> BOOL;
     fn MacCheckAdminAuthorization() -> BOOL;
@@ -147,6 +148,11 @@ pub fn is_can_input_monitoring(prompt: bool) -> bool {
         let value = if prompt { YES } else { NO };
         InputMonitoringAuthStatus(value) == YES
     }
+}
+
+/// Hope Desk: adds this app to the Input Monitoring list without opening Settings.
+pub fn request_input_monitoring_listing() {
+    unsafe { RequestInputMonitoringListing() }
 }
 
 pub fn is_can_screen_recording(prompt: bool) -> bool {
@@ -237,8 +243,8 @@ pub fn is_installed_daemon(prompt: bool) -> bool {
         }
         return true;
     }
-    if crate::hope_desk::is_staff() {
-        log::warn!("Hope Desk staff build does not install launchd jobs");
+    if !crate::hope_desk::allows_service() {
+        log::warn!("This Hope Desk build does not install launchd jobs");
         return false;
     }
 
@@ -399,8 +405,8 @@ fn write_plist_atomically(path: &str, body: &str) -> ResultType<()> {
 }
 
 pub fn write_plists() -> ResultType<()> {
-    if crate::hope_desk::is_staff() {
-        bail!("Hope Desk staff build does not install launchd jobs");
+    if !crate::hope_desk::allows_service() {
+        bail!("This Hope Desk build does not install launchd jobs");
     }
     let daemon_plist_path = format!(
         "/Library/LaunchDaemons/com.carriez.{}_service.plist",
@@ -972,8 +978,8 @@ fn update_me_from_app_dir(app_dir: String) -> ResultType<()> {
 }
 
 fn update_me_from_source(update_source: UpdateSource) -> ResultType<()> {
-    if crate::hope_desk::is_staff() {
-        bail!("Hope Desk staff build does not update from source");
+    if !crate::hope_desk::allows_service() {
+        bail!("This Hope Desk build does not update from source");
     }
     let app_name = crate::get_app_name();
     validate_install_app_name(&app_name)?;

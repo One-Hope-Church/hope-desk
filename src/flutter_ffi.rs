@@ -1158,7 +1158,7 @@ pub fn main_get_license() -> String {
 }
 
 pub fn main_get_version() -> String {
-    get_version()
+    crate::hope_desk::version_label()
 }
 
 pub fn main_get_fav() -> Vec<String> {

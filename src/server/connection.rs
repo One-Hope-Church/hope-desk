@@ -4050,7 +4050,10 @@ impl Connection {
                     #[cfg(feature = "flutter")]
                     #[cfg(not(any(target_os = "android", target_os = "ios")))]
                     Some(misc::Union::SwitchSidesRequest(s)) => {
-                        if let Ok(uuid) = uuid::Uuid::from_slice(&s.uuid.to_vec()[..]) {
+                        // Hope Desk: never connect out because a peer asked us to; keep the session.
+                        if crate::hope_desk::is_receive_only() {
+                            log::warn!("Hope Desk: switch sides refused");
+                        } else if let Ok(uuid) = uuid::Uuid::from_slice(&s.uuid.to_vec()[..]) {
                             if crate::server::insert_pending_switch_sides_uuid(
                                 self.lr.my_id.clone(),
                                 uuid.clone(),

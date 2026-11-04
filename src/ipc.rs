@@ -1014,8 +1014,11 @@ async fn handle(data: Data, stream: &mut Connection) {
                         log::warn!("Ignoring empty id write over IPC");
                         updated = false;
                     } else {
+                        let old_id = Config::get_id(); // Hope Desk
                         Config::set_key_confirmed(false);
                         Config::set_id(&value);
+                        // Hope Desk: remember the previous ID (UUID_MISMATCH reverts) and re-register.
+                        crate::hope_desk::on_id_written(&old_id, &value);
                     }
                 } else if name == "temporary-password" {
                     password::update_temporary_password();

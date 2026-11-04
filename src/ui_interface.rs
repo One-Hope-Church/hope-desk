@@ -1597,6 +1597,11 @@ pub async fn change_id_shared_(id: String, old_id: String) -> &'static str {
     }
     join_all(futs).await;
     let err = *err.lock().unwrap();
+    // Hope Desk: our OSS server can't rename (NOT_SUPPORT); use the client-side fallback.
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    if err == "server_not_support" {
+        return crate::hope_desk::change_id_without_server_support(&id, &old_id).await;
+    }
     if err.is_empty() {
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         crate::ipc::set_config_async("id", id.to_owned()).await.ok();

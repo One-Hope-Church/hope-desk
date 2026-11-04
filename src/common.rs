@@ -2122,6 +2122,11 @@ pub fn make_empty_dirs_response_to_json(res: &ReadEmptyDirsResponse) -> String {
 /// 1. Try to send the url scheme from ipc.
 /// 2. If failed to send the url scheme, we open a new main window to handle this url scheme.
 pub fn handle_url_scheme(url: String) {
+    // Hope Desk: Staff and Production never open an outgoing session from a link.
+    if crate::hope_desk::is_receive_only() {
+        log::warn!("Hope Desk receives connections only; ignoring url scheme");
+        return;
+    }
     #[cfg(not(target_os = "ios"))]
     if let Err(err) = crate::ipc::send_url_scheme(url.clone()) {
         log::debug!("Send the url to the existing flutter process failed, {}. Let's open a new program to handle this.", err);

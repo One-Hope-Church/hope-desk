@@ -1317,6 +1317,10 @@ pub fn session_add(
     is_shared_password: bool,
     conn_token: Option<String>,
 ) -> ResultType<FlutterSession> {
+    // Hope Desk: Staff and Production never open an outgoing session.
+    if crate::hope_desk::is_receive_only() {
+        bail!("Hope Desk receives connections only. Use Hope Desk Manager to connect.");
+    }
     let conn_type = if is_file_transfer {
         ConnType::FILE_TRANSFER
     } else if is_view_camera {

@@ -30,6 +30,8 @@ default = ["use_dasp"]
 hwcodec = ["scrap/hwcodec"]
 # Hope Desk staff (privacy) build; off = Hope Desk Production. See src/hope_desk.rs.
 hope-desk-staff = []
+# Hope Desk Manager build (connects out, never accepts); mutually exclusive with hope-desk-staff.
+hope-desk-manager = []
 vram = ["scrap/vram"]
 mediacodec = ["scrap/mediacodec"]
 drm = ["scrap/drm"]

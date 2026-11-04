@@ -431,6 +431,10 @@ impl Client {
         (i32, String),
         bool,
     )> {
+        // Hope Desk: Staff and Production never open an outgoing connection.
+        if crate::hope_desk::is_receive_only() {
+            bail!("Hope Desk receives connections only. Use Hope Desk Manager to connect.");
+        }
         if config::is_incoming_only() && !is_switch_sides_back(conn_type, &interface).await {
             bail!("Incoming only mode");
         }
@@ -5353,7 +5357,8 @@ pub mod peer_online {
         connect_tcp(online_server, CONNECT_TIMEOUT).await
     }
 
-    async fn query_online_states_(
+    // Hope Desk: pub(crate) for the Change ID pre-check (src/hope_desk.rs).
+    pub(crate) async fn query_online_states_(
         ids: &Vec<String>,
         timeout: std::time::Duration,
     ) -> ResultType<(Vec<String>, Vec<String>)> {

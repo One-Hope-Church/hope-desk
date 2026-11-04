@@ -1285,6 +1285,19 @@ impl RendezvousMediator {
     }
 
     async fn handle_uuid_mismatch(&mut self, socket: Sink<'_>) -> ResultType<()> {
+        // Hope Desk: right after a rename, UUID_MISMATCH means another computer owns the new ID.
+        // Go back to the previous ID instead of upstream's random one (`Config::update_id`).
+        if let Some(old_id) = crate::hope_desk::take_rename_to_revert(&Config::get_id()) {
+            log::warn!(
+                "UUID_MISMATCH from {} for renamed ID {}; reverting to {}",
+                self.host,
+                Config::get_id(),
+                old_id
+            );
+            Config::set_key_confirmed(false);
+            Config::set_id(&old_id);
+            return self.register_pk(socket).await;
+        }
         {
             let mut solving = SOLVING_PK_MISMATCH.lock().await;
             if solving.is_empty() || *solving == self.host {

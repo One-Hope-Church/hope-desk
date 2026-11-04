@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/widgets/connection_page_title.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/widgets/popup_menu.dart';
@@ -314,6 +315,7 @@ class _ConnectionPageState extends State<ConnectionPage>
                 Flexible(child: _buildRemoteIDTextField(context)),
               ],
             ).marginOnly(top: 22),
+            if (isHopeDeskManager()) _buildCopyInstallLink(context),
             SizedBox(height: 12),
             Divider().paddingOnly(right: 12),
             Expanded(child: PeerTabPage()),
@@ -322,6 +324,52 @@ class _ConnectionPageState extends State<ConnectionPage>
         if (!isOutgoingOnly) const Divider(height: 1),
         if (!isOutgoingOnly) OnlineStatusWidget()
       ],
+    );
+  }
+
+  /// Hope Desk Manager: copies the public install link (bare URL) for a staff or
+  /// production machine. URLs come from the compiled hard options, not hardcoded here.
+  Widget _buildCopyInstallLink(BuildContext context) {
+    void copyLink(String key) {
+      final url = hopeDeskHardOption(key);
+      if (url.isEmpty) {
+        showToast(translate('Failed'));
+        return;
+      }
+      Clipboard.setData(ClipboardData(text: url));
+      showToast('Link copied');
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, right: 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.link, size: 18),
+              label: const Text('Copy install link'),
+              onPressed: () => copyLink('hope-desk-staff-dmg-url'),
+            ),
+            PopupMenuButton<String>(
+              tooltip: '',
+              icon: const Icon(Icons.arrow_drop_down),
+              onSelected: (key) => copyLink(key),
+              itemBuilder: (context) => const [
+                PopupMenuItem<String>(
+                  value: 'hope-desk-staff-dmg-url',
+                  child: Text('Copy install link'),
+                ),
+                PopupMenuItem<String>(
+                  value: 'hope-desk-production-dmg-url',
+                  child: Text('Copy Production link'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

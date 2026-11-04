@@ -217,6 +217,10 @@ pub async fn create_tcp_connection(
     secure: bool,
     meta: ConnectionMeta,
 ) -> ResultType<()> {
+    // Hope Desk: Manager never accepts an incoming connection.
+    if crate::hope_desk::is_manager() {
+        bail!("Hope Desk Manager does not accept connections");
+    }
     let mut stream = stream;
     // The address the connection layer keys on, whitelist and admission alike.
     let addr = hbb_common::try_into_v4(addr);
