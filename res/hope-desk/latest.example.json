@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "test_ids": [
+    "PP-Test-01",
+    "IT-MacBook-Pro"
+  ],
+  "apps": {
+    "staff": {
+      "build": 57,
+      "short_version": "1.5.1",
+      "bundle_version": "hd2.57",
+      "rollout": "test",
+      "url": "https://onehope-downloads.s3.amazonaws.com/hope-desk/releases/57/Hope-Desk.dmg",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+      "size": 123456789
+    },
+    "production": {
+      "build": 57,
+      "short_version": "1.5.1",
+      "bundle_version": "hd2.57",
+      "rollout": "test",
+      "url": "https://onehope-downloads.s3.amazonaws.com/hope-desk/releases/57/Hope-Desk-Production.dmg",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+      "size": 123456789
+    },
+    "manager": {
+      "build": 57,
+      "short_version": "1.5.1",
+      "bundle_version": "hd2.57",
+      "rollout": "test",
+      "url": "https://onehope-downloads.s3.amazonaws.com/hope-desk/releases/57/Hope-Desk-Manager.dmg",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+      "size": 123456789
+    }
+  }
+}

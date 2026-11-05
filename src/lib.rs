@@ -50,6 +50,7 @@ mod clipboard;
 pub mod core_main;
 mod custom_server;
 pub mod hope_desk;
+pub mod hope_desk_update;
 mod lang;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod port_forward;

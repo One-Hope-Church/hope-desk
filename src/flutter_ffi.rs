@@ -2762,6 +2762,9 @@ pub fn main_get_printer_names() -> SyncReturn<String> {
 }
 
 pub fn main_get_common(key: String) -> String {
+    if let Some(r) = crate::hope_desk_update::get_common(&key) {
+        return r; // Hope Desk
+    }
     if key == "is-printer-installed" {
         #[cfg(target_os = "windows")]
         {
@@ -2871,6 +2874,9 @@ fn verified_update_artifact_for_release_page_url(
 }
 
 pub fn main_set_common(_key: String, _value: String) {
+    if crate::hope_desk_update::set_common(&_key, &_value) {
+        return; // Hope Desk
+    }
     #[cfg(target_os = "windows")]
     if _key == "install-printer" && crate::platform::is_win_10_or_greater() {
         std::thread::spawn(move || {

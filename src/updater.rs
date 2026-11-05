@@ -1,5 +1,5 @@
 mod artifact;
-mod download;
+pub(crate) mod download; // Hope Desk: hope_desk_update::verify calls ensure_verified_update_artifact
 
 use crate::common::do_check_software_update;
 use artifact::verified_update_artifact_from_release_page_url;
@@ -32,12 +32,12 @@ use std::os::{
 };
 
 #[cfg(target_os = "macos")]
-struct MacUpdateLock {
+pub(crate) struct MacUpdateLock {
     _file: std::fs::File,
 }
 
 #[cfg(target_os = "macos")]
-fn acquire_mac_update_lock() -> ResultType<MacUpdateLock> {
+pub(crate) fn acquire_mac_update_lock() -> ResultType<MacUpdateLock> {
     let path = std::path::PathBuf::from("/var/run/rustdesk-update.lock");
     let handle = std::fs::OpenOptions::new()
         .read(true)
@@ -471,6 +471,7 @@ fn wait_for_failed_update_retry() {
 /// Starts the background silent auto-update scheduler for macOS.
 /// Called from `start_os_service()` which runs as root via LaunchDaemon.
 #[cfg(target_os = "macos")]
+#[allow(dead_code)] // Hope Desk: replaced by hope_desk_update::start_production_updater
 pub fn start_auto_update_macos() {
     let spawn_result = std::thread::Builder::new()
         .name("rustdesk-auto-update".to_owned())

@@ -7,7 +7,7 @@ use std::{
 
 const UPDATE_FILE_CREATE_ATTEMPTS: usize = 16;
 
-pub(super) fn ensure_verified_update_artifact(
+pub(crate) fn ensure_verified_update_artifact(
     download_url: &str,
     file_path: &Path,
     expected_size: u64,

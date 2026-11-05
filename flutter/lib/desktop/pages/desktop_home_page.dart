@@ -25,6 +25,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 import '../widgets/button.dart';
+import '../widgets/hope_desk_update.dart'; // Hope Desk v2.1
 
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
@@ -735,6 +736,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   Widget buildHelpCards(String updateUrl) {
+    // Hope Desk v2.1: update banner (staff and Manager; production shows none). Read here so
+    // the Obx subscribes, but shown only after every permission / install card (macOS branch).
+    final hopeUpdate = hopeDeskUpdateBanner();
     if (!bind.isCustomClient() &&
         updateUrl.isNotEmpty &&
         !isCardClosed &&
@@ -818,6 +822,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         return buildInstallCard("", "install_daemon_tip", "Install", () async {
           bind.mainIsInstalledDaemon(prompt: true);
         });
+      }
+      // Hope Desk v2.1: no permission or install card is pending, so the update banner may show.
+      if (hopeUpdate != null) {
+        return buildInstallCard("Update available", hopeUpdate.text,
+            hopeUpdate.button, () => hopeUpdate.onTap?.call());
       }
       //// Disable microphone configuration for macOS. We will request the permission when needed.
       // else if ((await osxCanRecordAudio() !=
@@ -1012,6 +1021,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   @override
   void initState() {
     super.initState();
+    startHopeDeskUpdatePoller(); // Hope Desk v2.1
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       await gFFI.serverModel.fetchID();
       if (isHopeDeskProduction()) {
