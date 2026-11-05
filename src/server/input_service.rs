@@ -1610,6 +1610,7 @@ fn reset_input() {
     unsafe {
         let _lock = VIRTUAL_INPUT_MTX.lock();
         VIRTUAL_INPUT_STATE = VirtualInputState::new();
+        crate::hope_desk::log_input_injection_state(VIRTUAL_INPUT_STATE.is_some());
     }
 }
 
@@ -1657,14 +1658,20 @@ fn sim_rdev_rawkey_virtual(code: u32, keydown: bool) {
 fn simulate_(event_type: &EventType) {
     unsafe {
         let _lock = VIRTUAL_INPUT_MTX.lock();
+        // Hope Desk: the per-connection init can fail; retry, then fall back to rdev's HID-tap
+        // path rather than silently dropping keys.
+        if VIRTUAL_INPUT_STATE.is_none() {
+            VIRTUAL_INPUT_STATE = VirtualInputState::new();
+        }
         if let Some(input) = VIRTUAL_INPUT_STATE.as_ref() {
             let _ = input.simulate(&event_type);
-        } else if matches!(event_type, EventType::KeyRelease(_)) {
+        } else {
             hbb_common::throttled_log!(
                 VirtualInputState::KEY_UP_ERROR_LOG_INTERVAL,
                 error,
-                "Failed to inject macOS key-up: virtual input is not initialized"
+                "macOS virtual input is unavailable; posting keys through the HID event tap"
             );
+            let _ = rdev::simulate(event_type);
         }
     }
 }

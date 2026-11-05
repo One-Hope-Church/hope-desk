@@ -2912,11 +2912,17 @@ impl Connection {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     fn try_start_cm_ipc(&mut self) {
         if let Some(p) = self.start_cm_ipc_para.take() {
+            let hope_desk_tx_from_cm = p.tx_from_cm.clone();
             tokio::spawn(async move {
                 #[cfg(windows)]
                 let tx_from_cm_clone = p.tx_from_cm.clone();
                 if let Err(err) = start_ipc(p.rx_to_cm, p.tx_from_cm).await {
                     log::warn!("ipc to connection manager exit: {}", err);
+                    // Hope Desk staff: without the connection manager there is no Accept prompt and
+                    // no visible session, so end the connection instead of leaving it waiting.
+                    if crate::hope_desk::is_staff() {
+                        hope_desk_tx_from_cm.send(ipc::Data::Close).ok();
+                    }
                     // https://github.com/rustdesk/rustdesk-server-pro/discussions/382#discussioncomment-10525725, cm may start failed
                     #[cfg(windows)]
                     if !crate::platform::is_prelogin()
@@ -6512,7 +6518,7 @@ async fn start_ipc(
                 .unwrap()
                 .push(crate::run_me(args)?);
         }
-        for _ in 0..20 {
+        for _ in 0..crate::hope_desk::CM_START_POLLS {
             sleep(0.3).await;
             if let Ok(s) = crate::ipc::connect(1000, "_cm").await {
                 stream = Some(s);

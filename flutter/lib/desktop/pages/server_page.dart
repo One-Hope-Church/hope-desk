@@ -78,7 +78,7 @@ class _DesktopServerPageState extends State<DesktopServerPage>
   }
 
   void onRemoveId(String id) {
-    if (tabController.state.value.tabs.isEmpty) {
+    if (tabController.state.value.tabs.isEmpty && !isHopeDeskStaff()) {
       windowManager.close();
     }
   }
@@ -1211,7 +1211,7 @@ class _CmControlPanel extends StatelessWidget {
 
   void handleClose() async {
     await bind.cmRemoveDisconnectedConnection(connId: client.id);
-    if (await bind.cmGetClientsLength() == 0) {
+    if (await bind.cmGetClientsLength() == 0 && !isHopeDeskStaff()) {
       windowManager.close();
     }
   }

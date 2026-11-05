@@ -85,6 +85,10 @@ pub const DISPLAY_NAME: &str = match VARIANT {
 pub const STAFF_DMG_URL: &str = "https://onehope-downloads.s3.amazonaws.com/hope-desk/Hope-Desk.dmg";
 pub const PRODUCTION_DMG_URL: &str =
     "https://onehope-downloads.s3.amazonaws.com/hope-desk/Hope-Desk-Production.dmg";
+/// Polls (0.3 s apart) a new connection waits for the connection manager to start listening.
+/// Upstream waits 20 (~6 s); a background or cold-starting Flutter CM can take longer, and a
+/// connection that gives up is left with no Accept prompt at all.
+pub const CM_START_POLLS: usize = 200;
 /// Hope Desk release number shown after the upstream protocol version.
 pub const HOPE_DESK_RELEASE: &str = "2";
 
@@ -151,11 +155,9 @@ pub fn init() {
             ("hope-desk-production-dmg-url", PRODUCTION_DMG_URL),
             ("conn-type", if is_manager() { "outgoing" } else { "incoming" }),
         ];
-        // Input Monitoring is a controller-side permission (keyboard grab), so only Manager asks for
-        // it. If a pilot shows receivers need it too, change this to `true` for all variants.
-        if is_manager() {
-            hard.push(("hope-desk-needs-input-monitoring", "Y"));
-        }
+        // Every variant lists itself under Input Monitoring and shows the permission card: a staff
+        // Mac without it reported keys not arriving while mouse input worked.
+        hard.push(("hope-desk-needs-input-monitoring", "Y"));
         match VARIANT {
             Variant::Staff => {
                 overwrite.extend([
@@ -280,6 +282,10 @@ pub fn check_cli_args(args: &[String]) -> bool {
         )
     {
         start_orphan_watchdog();
+        #[cfg(target_os = "macos")]
+        if arg == "--cm" && is_receive_only() {
+            crate::platform::macos::disable_app_nap();
+        }
     }
     true
 }
@@ -287,6 +293,10 @@ pub fn check_cli_args(args: &[String]) -> bool {
 /// Called when the GUI starts with no arguments. Manager asks macOS to list it under Input
 /// Monitoring (it grabs the keyboard when controlling a remote Mac).
 pub fn on_gui_start() {
+    #[cfg(target_os = "macos")]
+    if is_receive_only() {
+        crate::platform::macos::disable_app_nap();
+    }
     #[cfg(target_os = "macos")]
     if HARD_SETTINGS
         .read()
@@ -299,6 +309,18 @@ pub fn on_gui_start() {
             crate::platform::macos::request_input_monitoring_listing();
         });
     }
+}
+
+/// Logged once per incoming connection so a field report of "keys do nothing" shows which
+/// permission or event source was missing.
+#[cfg(target_os = "macos")]
+pub fn log_input_injection_state(virtual_input_ok: bool) {
+    log::info!(
+        "Hope Desk input: virtual keyboard source {}, accessibility {}, input monitoring {}",
+        if virtual_input_ok { "ok" } else { "FAILED" },
+        crate::platform::macos::is_process_trusted(false),
+        crate::platform::macos::is_can_input_monitoring(false),
+    );
 }
 
 /// Child processes (connection manager, whiteboard, codec check) exit once the GUI that spawned

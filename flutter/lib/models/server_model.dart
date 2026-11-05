@@ -166,7 +166,9 @@ class ServerModel with ChangeNotifier {
         } else {
           if (_clients.isEmpty) {
             hideCmWindow();
-            if (_zeroClientLengthCounter++ == 12) {
+            // Hope Desk staff keeps the connection manager alive (hidden) so the next Accept
+            // prompt appears at once; it still exits when Hope Desk quits.
+            if (_zeroClientLengthCounter++ == 12 && !isHopeDeskStaff()) {
               // 6 second
               windowManager.close();
             }

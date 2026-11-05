@@ -911,3 +911,14 @@ extern "C" bool MacSetPrivacyMode(bool on) {
         return TurnOffPrivacyModeInternal();
     }
 }
+
+// Hope Desk: keep App Nap from throttling the receive-side app and its connection manager,
+// so a remote request is answered promptly while the window is in the background.
+extern "C" void HopeDeskDisableAppNap() {
+    static id activity = nil;
+    if (activity == nil) {
+        activity = [[[NSProcessInfo processInfo]
+            beginActivityWithOptions:NSActivityUserInitiatedAllowingIdleSystemSleep
+                              reason:@"Waiting for remote support connections"] retain];
+    }
+}

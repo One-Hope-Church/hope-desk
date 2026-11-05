@@ -103,6 +103,7 @@ extern "C" {
     fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> BOOL;
     fn InputMonitoringAuthStatus(_: BOOL) -> BOOL;
     fn RequestInputMonitoringListing();
+    fn HopeDeskDisableAppNap();
     fn IsCanScreenRecording(_: BOOL) -> BOOL;
     fn CanUseNewApiForScreenCaptureCheck() -> BOOL;
     fn MacCheckAdminAuthorization() -> BOOL;
@@ -153,6 +154,11 @@ pub fn is_can_input_monitoring(prompt: bool) -> bool {
 /// Hope Desk: adds this app to the Input Monitoring list without opening Settings.
 pub fn request_input_monitoring_listing() {
     unsafe { RequestInputMonitoringListing() }
+}
+
+/// Hope Desk: see `HopeDeskDisableAppNap` in macos.mm.
+pub fn disable_app_nap() {
+    unsafe { HopeDeskDisableAppNap() }
 }
 
 pub fn is_can_screen_recording(prompt: bool) -> bool {
