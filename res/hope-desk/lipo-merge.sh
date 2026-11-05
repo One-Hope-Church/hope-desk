@@ -44,15 +44,29 @@ rm -rf "$OUT"
 mkdir -p "$(dirname "$OUT")"
 ditto "$ARM" "$OUT"
 
-# 2. same file set on both sides
+# 2. same file set on both sides, with one exception: the x86_64 build targets macOS 10.14,
+#    so Xcode embeds the Swift runtime (Contents/Frameworks/libswift*.dylib). The arm64 build
+#    (12.3+) uses the OS copy. Those x86_64-only dylibs are copied in as-is; only the x86_64
+#    slice of the executables ever loads them.
 file_list "$ARM" > "$TMP/arm.list"
 file_list "$X86" > "$TMP/x86.list"
-if ! diff -q "$TMP/arm.list" "$TMP/x86.list" >/dev/null; then
+LC_ALL=C comm -13 "$TMP/arm.list" "$TMP/x86.list" > "$TMP/x86only.list"
+LC_ALL=C comm -23 "$TMP/arm.list" "$TMP/x86.list" > "$TMP/armonly.list"
+grep -v -E '^\./Contents/Frameworks/libswift[^/]*\.dylib$' "$TMP/x86only.list" > "$TMP/x86only.bad" || true
+if [ -s "$TMP/armonly.list" ] || [ -s "$TMP/x86only.bad" ]; then
   echo "error: the arm64 and x86_64 bundles do not contain the same files." >&2
   echo "       '<' = only in arm64 build, '>' = only in x86_64 build:" >&2
-  diff "$TMP/arm.list" "$TMP/x86.list" >&2 || true
+  sed 's/^/< /' "$TMP/armonly.list" >&2
+  sed 's/^/> /' "$TMP/x86only.bad" >&2
   exit 1
 fi
+swift_only=0
+while IFS= read -r rel; do
+  [ "$(archs_of "$X86/$rel")" = "x86_64" ] || { echo "error: $rel is not a thin x86_64 dylib" >&2; exit 1; }
+  ditto "$X86/$rel" "$OUT/$rel"
+  swift_only=$((swift_only + 1))
+done < "$TMP/x86only.list"
+[ "$swift_only" -eq 0 ] || echo "copied $swift_only x86_64-only Swift runtime dylib(s)"
 
 # 3. merge Mach-O files
 merged=0; kept=0
@@ -97,6 +111,9 @@ fi
 bad=0
 while IFS= read -r -d '' f; do
   r="$(archs_of "$f")" || continue
+  if grep -qxF "./${f#$OUT/}" "$TMP/x86only.list"; then
+    continue                              # x86_64-only Swift runtime, copied in step 2
+  fi
   if [ "$r" != "arm64 x86_64" ]; then
     echo "error: ${f#$OUT/} is [$r], expected [arm64 x86_64]" >&2
     bad=1
